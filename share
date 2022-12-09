@@ -1,2 +1,0 @@
-#!/bin/bash
-kdeconnect-cli -n Cikitta --share "$@"
