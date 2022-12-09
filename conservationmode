@@ -1,0 +1,26 @@
+#!/bin/bash
+tweak() {
+	sudo su -c "echo $1 > /sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode"
+}
+getstatus(){
+	status="$(</sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode)"
+}
+case "$1" in
+	On|on|Enable|enable|1)
+		tweak 1
+		;;
+	Off|off|Disable|disable|0)
+		tweak 0
+		;;
+	toggle)
+		getstatus
+		[[ "$status" == 1 ]] && tweak 0 || tweak 1
+		;;
+	status)
+		getstatus
+		[[ "$status" == 1 ]] && echo "Status: enabled" || echo "Status: disabled"
+		;;
+	*)
+		echo "Syntax: $(basename $0) on|off|toggle|status"
+		exit 1
+esac	

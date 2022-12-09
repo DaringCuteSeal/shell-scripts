@@ -1,0 +1,21 @@
+#!/bin/bash
+spins=('|' '\' '-' '/')
+
+spin(){
+	for j in ${spins[@]}; do
+			echo -en "\rSpinning.. -> $j"
+			sleep 0.1
+	done
+}
+
+if [[ -z "$1" ]]; then
+	while :; do spin; done
+else
+	i=0
+	while [[ $i -lt $1 ]]
+	do
+		spin
+		i=$(($i+1))
+	done
+	echo
+fi

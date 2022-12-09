@@ -1,0 +1,195 @@
+#!/bin/bash
+
+try(){
+	type "$1" &>/dev/null
+}
+
+[[ -z "$EDITOR" ]] && EDITOR=vi
+try "$EDITOR" || {
+	echo "Error: $EDITOR could not be executed!"
+	exit 1
+}
+
+if [[ -z "$1" ]]
+then
+	lang="bash"
+else
+	lang="$1"
+fi
+
+ask_arg=1
+
+TMPDIR=${TMPDIR:-/tmp}
+
+cleanup(){
+	rm "$TMPFILE" 2>/dev/null
+	rm "$TMPFILE.pid" 2>/dev/null
+	exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+
+save(){
+	if [[ -z "$filename" ]]
+	then
+		read -e -p "File name? " filename
+		[[ -z "$filename" ]] && filename="$TMPFILENAME"
+	fi
+	cp "$TMPFILE" "$HOME/$filename"
+	echo "File saved to $HOME/$filename"
+}
+
+process_cmd(){
+	if [[ -z "$1" ]]
+	then
+		bail=1
+		return
+	fi
+	case "$1" in
+		h)
+			cat << EOF
+Available commands:
+w 	Save file
+! 	Execute script again
+!<cmd>  Execute a command
+q 	Quit and delete temporary file
+wq 	Save file and then quit
+t <opt>	Toggle options: ask_arg
+h 	Show this help
+EOF
+			;;
+		!)
+			exec_file
+			;;
+		w)
+			save
+			;;
+		wq)
+			save
+			cleanup
+			;;
+		q)
+			cleanup
+			;;
+		t)
+			case "$2" in
+				ask_arg)
+					[[ $ask_arg == 0 ]] && ask_arg=1 || ask_arg=0
+					echo "ask_arg=$ask_arg"
+					;;
+				*)
+					echo "Unknown option: $2"
+					i=yes
+					;;
+			esac
+			;;
+		!*)
+			eval "${@#!}"
+			;;
+		*)
+			echo "Unknown command: $1"
+			;;
+	esac
+}
+
+TMPFILENAME="$(mktemp -u quickscript.XXXXXXXXXX)"
+case "$lang" in
+	bash)
+		TMPFILE="${TMPDIR}/${TMPFILENAME}.sh"
+		echo "#!/bin/bash" >> "$TMPFILE"
+		;;
+	zsh)
+		TMPFILE="${TMPDIR}/${TMPFILENAME}.sh"
+		echo "#!/bin/zsh" >> "$TMPFILE"
+		;;
+	c)
+		TMPFILE="${TMPDIR}/${TMPFILENAME}.c"
+		;;
+	python)
+		TMPFILE="${TMPDIR}/${TMPFILENAME}.py"
+		;;
+	ruby)
+		TMPFILE="${TMPDIR}/${TMPFILENAME}.rb"
+		;;	
+	perl)
+		TMPFILE="${TMPDIR}/${TMPFILENAME}.pl"
+		;;	
+	*)
+		echo "Unsupported language \"$1\"!"
+		;;
+esac
+
+
+
+exec_file(){
+	[[ $ask_arg != 0 ]] && read -e -p "Extra arguments? > " args
+	if [[ -z "$args" ]]
+	then
+		ask_arg=0
+	fi
+	echo
+
+	echo -e "\e[1;1mExecution result:"
+	echo -e "\n${reset}-------------------------"
+
+	trap "kill_child" SIGINT
+
+	case "$lang" in
+		bash)
+			bash "$TMPFILE" "$args"
+			;;
+		c)
+			cc "$TMPFILE" -o "$TMPFILE.bin"
+			"$TMPFILE.bin" "$args"
+			;;
+		zsh)
+			zsh "$TMPFILE" "$args"
+			;;
+		python)
+			python "$TMPFILE" "$args"
+			;;
+		ruby)
+			ruby "$TMPFILE" "$args"
+			;;
+		pel)
+			perl "$TMPFILE" "$args"
+			;;
+	esac
+	code="$?"
+
+	trap "cleanup" SIGINT
+
+	echo -e "${reset}-------------------------"
+	echo "Exit code: $code"
+	echo
+}
+		
+kill_child(){
+	echo
+}
+
+reset='\e[0;0m'
+
+
+
+until [[ "$input" == "q" ]]
+do
+	unset bail
+
+	echo
+
+	$EDITOR "$TMPFILE"
+
+	exec_file
+
+	echo "ENTER to edit script again; h for help"
+
+	until [[ "$bail" -ne 0 ]]
+	do
+		read -e -p "> " cmd
+		process_cmd $cmd
+	done
+done
+
+cleanup

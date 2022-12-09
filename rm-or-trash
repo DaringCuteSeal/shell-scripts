@@ -1,0 +1,13 @@
+#!/bin/bash
+red='\e[0;31m'
+reset='\e[0;0m'
+read -p "Remove/trash? [r/t] " answer
+if [[ "$answer" == [tT] ]]; then	
+	trash "$@"
+elif [[ "$answer" == [rR] ]]; then
+	rm "$@"
+elif [[ -z "$answer" ]]; then
+	trash "$@"
+else
+	echo -e "${red}Invalid option!${reset}"
+fi

@@ -1,0 +1,109 @@
+#!/bin/bash
+
+abort(){
+	if [[ $? -gt 0 ]]
+	then
+		rm "$filename"
+		exit 1
+	fi
+
+}
+
+choice="$(dmenu-wrap << EOF
+Screen
+Window
+Select
+EOF
+)"
+
+abort
+
+case "$choice" in
+	Screen)
+		:
+		;;
+	Window)
+		opt+="-u "
+		;;
+	Select)
+		opt+="-s -l style=solid,mode=edge,width=2,color=red"
+		;;
+	*)
+		exit 1
+		;;
+esac
+
+filename="`mktemp -u /tmp/scrot-shot.XXXXX.png`"
+[[ "$choice" != "select" ]] && sleep 0.3s
+
+scrot $opt "$filename" || exit $?
+date="`date +%s`"
+
+abort
+
+choice="$(dmenu-wrap << EOF
+Save
+Copy
+View
+Share
+Edit
+EOF
+)"
+
+abort
+
+case "$choice" in
+	Save)
+		choice="$(dmenu-wrap -p "Name:" << EOF
+shot-`date -d "@$date" +'%T-%F'`.png
+shot-`date -d "@$date" +%F`.png
+shot-`date -d "@$date" +%T`.png
+shot-`date -d "@$date" +'%m-%d-%y'`.png
+EOF
+)"
+		abort
+		mv "$filename" "$HOME/Pictures/$choice"
+		notify-send "Scrot" "Saved image to $HOME/Pictures/$choice."
+		;;
+	Copy)
+		echo "$filename"
+		xclip -selection clipboard -t image/png "$filename"
+		notify-send "Scrot" "Image copied to clipboard."
+		;;
+	Share)
+		device="$(kdeconnect-cli -a --name-only)"
+		if [[ -z "$device" ]]
+		then
+			notify-send -u critical "Scrot" "No devices found!"
+			exit 1
+		fi
+
+		tmpfilename="/tmp/scrot-shot-`date -d "@$date" +'%T-%F'`.png"
+		mv "$filename" "$tmpfilename"
+
+		out="`kdeconnect-cli -n "$device" --share "$tmpfilename" 2>&1`"
+		stat=$?
+		if [[ $stat == 0 ]]
+		then
+			notify-send "Scrot" "File sent to $device."
+		else
+			notify-send -u critical "Scrot" "Failed to send file, error message: $out"
+		fi
+
+		# KDE Connect directly exits without waiting for the
+		# file to be sent, so don't delete the file or 
+		# the file might fail to send.
+		norm=1
+		;;
+	View)
+		feh "$filename"
+		norm=1 # "no remove"
+		;;
+	Edit)
+		app="$(dmenu-wrap -p "'Edit with:'" <&-)"
+		abort
+		"$app" "$filename" || exit 1
+		norm=1
+esac
+
+[[ $norm != 1 ]] && rm "$filename" &>/dev/null || exit 0

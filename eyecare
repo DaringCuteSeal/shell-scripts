@@ -1,0 +1,16 @@
+#!/bin/sh
+# eyecare - "I care" about your eyes.
+
+loops=5
+sleep 15m
+
+while :
+do
+	for (( i = 0; i <= $loops; i++ ))
+	do
+		notify-send "eyecare 👀" "💺 Take a rest, look away from your computer." --action=OK
+		sleep 15m
+	done
+	notify-send "eyecare 👀" "😪 Take a long rest, look away from your computer and walk around." --action=OK
+	sleep 10m
+done

@@ -1,0 +1,59 @@
+#!/bin/bash
+# Used to be a zsh script, meh.
+red='\e[0;31m'
+reset='\e[0;0m'
+
+# Help!
+if [[ "$1" == "--help" ]]; then
+	echo -e "${0}: Collatz Conjecture —- The math magic. Watch the 4-2-1 loop in your terminal.\nUsage: ${0} <number> <iterations>\nIterations can be either an integer or \"auto\" to stop printing until the sequence reaches 1.\nNote: Negative numbers won't work well since this script cannot calculate precisely. Use the modified version that uses Calc instead."
+	exit
+fi
+
+# Get inputs if no argument is provided.
+if [[ -z "$1" ]]; then
+	read -p "Number: " num
+else
+	num="$1"
+fi
+
+if [[ -z "$2" ]]; then
+	read -p "Iterations (specify a number or leave blank for auto): " iter
+	if [[ -z "$iter" ]]; then
+		iter='auto'
+	fi
+else
+	iter="$2"
+fi
+
+
+function result () {
+	if [[ "$(($num % 2))" == 1 ]]; then
+		ans="$((($num*3)+1))"
+		echo -e "$num × 3 + 1 = ${red}$ans${reset}"
+		num="$ans"
+	else
+		ans="$(($num/2))"
+		echo -e "$num ÷ 2 = ${red}$ans${reset}"
+		num="$ans"
+	fi
+}
+
+# dumpster
+# repeat "$(($iter-1))"; do
+
+function loop () {
+	for a in $(seq 0 $(($iter-1))); do
+		result
+	done
+}
+loop_until_one () {
+	while [[ "$num" != 1 ]]; do
+			result
+		done
+
+}
+
+# echo -en "\x1b[2J\x1b[H"
+echo "Collatz Conjecture of $num:"
+
+[[ "$iter" == 'auto' ]] && loop_until_one || loop

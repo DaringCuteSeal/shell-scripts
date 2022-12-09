@@ -1,0 +1,59 @@
+#!/bin/sh
+
+dmenu_ask(){
+
+	choice="$(echo -e "Yes\nNo" | dmenu-wrap -p '"Are you sure?"')"
+
+	case "$choice" in
+		Yes)
+			eval "$1"
+			;;
+		No)
+			exit 0
+			;;
+	esac
+}
+
+choice="$(echo -e "Log out\nSuspend\nPower off\nReboot\nHibernate\nLock\nBlank screen\nSwitch user\nSwitch GPU" | dmenu-wrap -p '"Leave.."')"
+
+case "$choice" in
+	"Log out")
+		dmenu_ask "i3-msg exit"
+		;;
+	"Suspend")
+		systemctl suspend
+		;;
+	"Power off")
+		dmenu_ask "systemctl poweroff -i"
+		;;
+	"Switch user")
+		dm-tool switch-to-greeter
+		;;
+	"Lock")
+		i3lock_wallpaper
+		;;
+	"Blank screen")
+		sleep 0.5s
+		xdg-screensaver activate
+		;;
+	"Reboot")
+		dmenu_ask "systemctl reboot -i"
+		;;
+	"Hibernate")
+		dmenu_ask "systemctl hibernate -i"
+		;;
+	"Switch GPU")
+		optimus_status="$(optimus-manager --status | grep "Current GPU mode" | awk -F " : " '{print $2}')"
+		optimus_modes=('integrated' 'nvidia' 'hybrid')
+
+		list="$(for i in ${optimus_modes[@]/$optimus_status/}; do echo "$i"; done)"
+		if ! optimus-manager --status &>/dev/null
+		then
+			dmenu-wrap -p '"Failed to get GPU status!"' <<< "OK" &>/dev/null
+			exit 1
+		fi
+
+		choice="$(dmenu-wrap -p '"Switch to.."' <<< "$list")"
+		[[ $? == 0 ]] && dmenu_ask "optimus-manager --switch $choice --no-confirm"
+		;;
+esac

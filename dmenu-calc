@@ -1,0 +1,23 @@
+#!/bin/bash
+# totally unfinished but works eh. use the awesome™ calculator instead (mod4+=)
+# edit: no lol i switched to i3. time to continue this!
+
+calculation="$(dmenu-wrap -p '"Calculate:"' <&-)"
+
+if [[ -n "$calculation" ]]
+then
+	result="$(calc -p -- $calculation)"
+fi
+
+if [[ -n "$result" ]]
+then
+	choice="$(dmenu-wrap -p "'Result: $result'" << EOF
+Close
+Copy to clipboard
+EOF
+)"
+	if [[ "$choice" == "Copy to clipboard" ]]
+	then
+		echo "$result" | xclip -selection clipboard -r
+	fi
+fi
