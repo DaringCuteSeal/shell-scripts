@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+
+shopt -s nullglob globstar
+
+prefix=${PASSWORD_STORE_DIR-~/.password-store}
+password_files=( "$prefix"/**/*.gpg )
+password_files=( "${password_files[@]#"$prefix"/}" )
+password_files=( "${password_files[@]%.gpg}" )
+dmenu="rofi-dmenu"
+
+show(){
+	pass="$(printf '%s\n' "${password_files[@]}" | $dmenu "$@")"
+
+	[[ -z "$pass" ]] && exit
+
+	choice="$($dmenu << EOF
+Copy
+Edit
+Rename
+Delete
+EOF
+)"
+	case "$choice" in
+		Edit)
+			alacritty -e pass edit "$pass"
+			;;
+		Rename)
+			name="$(zenity --entry --text="New password name:")"
+			if [[ -n "$name" ]]
+			then
+				pass mv "$pass" "$name"
+				notify-send "Pass" "Password '$pass' renamed to '$name'."
+			fi
+			;;
+		Copy)
+			pass -c "$pass" &>/dev/null
+			if [[ $? -ne 0 ]]
+			then
+				exit 1
+			else
+				notify-send "Pass" "Password '$pass' copied to clipboard."
+			fi
+			;;
+		Delete)
+			pass rm "$pass"
+			notify-send "Pass" "Password '$pass' deleted."
+			;;
+
+		*)
+			exit 1
+			;;
+	esac
+}
+
+clear_clipboard(){
+	echo "$password_hash"
+	sleep 45s
+	xclip -selection clipboard -o | md5sum - | read -d " " curr_clip
+	if [[ "$curr_clip" == "$password_hash" ]]
+	then
+		printf "" | xclip -i -selection clipboard
+	fi
+}
+
+choice="$($dmenu << EOF
+List
+Add
+EOF
+)"
+
+case "$choice" in
+	Add)
+		name="$(zenity --entry --text="New password name:")"
+		[[ -z "$name" ]] && exit 1
+
+		choice="$($dmenu << EOF
+Generate
+Enter password...
+EOF
+		)"
+		case "$choice" in
+			Generate)
+				pass generate -c "$name"
+				notify-send "Pass" "Generated '$name' and copied it to the clipboard."
+				;;
+			'Enter password...')
+				pass="$(zenity --password)"
+				[[ -z "$pass" ]] && exit 1
+
+				pass insert --echo "$name" <<< "$pass"
+				unset pass
+				notify-send "Pass" "Password '$name' added."
+				;;
+		esac
+		;;
+	List)
+		show
+		;;
+esac
+
