@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# passmenu, improved
+# requires pass, dmenu, zenity, libnotify (notify-send), and xclip
+# Forked from https://git.zx2c4.com/password-store/tree/contrib/dmenu/passmenu
 
 shopt -s nullglob globstar
 
@@ -6,7 +9,7 @@ prefix=${PASSWORD_STORE_DIR-~/.password-store}
 password_files=( "$prefix"/**/*.gpg )
 password_files=( "${password_files[@]#"$prefix"/}" )
 password_files=( "${password_files[@]%.gpg}" )
-dmenu="rofi-dmenu"
+dmenu="dmenu"
 
 show(){
 	pass="$(printf '%s\n' "${password_files[@]}" | $dmenu "$@")"
