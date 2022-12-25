@@ -1,0 +1,72 @@
+#!/bin/sh
+
+governors=($(</sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors))
+
+say(){
+	if [[ $silent != 1 ]]
+	then
+		echo "$1"
+	fi
+}
+
+print_help(){
+	cat << EOF
+Usage: $(basename $0) [options] <set|get> [governor]
+
+Options:
+	-h | --help | help   Show this help
+	-z | --silent        Do not print anything
+
+available governors: ${governors[@]}
+EOF
+}
+
+[[ -z "$1" ]] && { print_help; exit 1; }
+
+while [[ $# -gt 0 ]]
+do
+	case "$1" in
+		--help|help|-h)
+			print_help
+			exit 0
+			;;
+		-z|--silent)
+			silent=1
+			shift
+			;;
+		set)
+
+			if [[ -z "$2" ]]
+			then
+				say "Err: please specify the governor." 
+				say "Available governors: ${governors[@]}"
+				exit 1
+			fi
+
+			# you can use regex to match the
+			# requested governor and make sure
+			# it's a valid governor, too.
+			# (edit on May 30 2022)
+
+			for i in "${governors[@]}"
+			do
+				if [[ "$2" == "$i" ]]
+				then
+					sudo su -c "for j in /sys/devices/system/cpu/cpufreq/policy*; do echo "$2" > \${j}/scaling_governor; done"
+					say "CPU governor set to $2."
+					exit 0
+				fi
+			done
+			say "Err: invalid governor '$2'"
+			exit 1
+			;;
+		get)
+			echo "$(</sys/devices/system/cpu/cpufreq/policy0/scaling_governor)"
+			exit 0
+			;;
+		*)
+			print_help
+			exit 1
+			;;
+	esac
+done
